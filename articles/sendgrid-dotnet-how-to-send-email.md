@@ -202,10 +202,10 @@ to send a message using both SMTP and the Web API.
     var credentials = new NetworkCredential("username", "password");
 
     // Create a REST transport for sending email.
-    var transportREST = Web.GetInstance(credentials);
+    var transportREST = new Web(credentials);
 
     // Send the email.
-    transportREST.Deliver(myMessage);
+    transportREST.Deliver(myMessage); // You can use: await transportREST.DeliverAsync(myMessage);
 
 <h2><a name="addattachment"></a><span  class="short-header">How to: Add an attachment</span>How to: Add an attachment</h2>
 
