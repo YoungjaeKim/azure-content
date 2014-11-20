@@ -41,42 +41,66 @@
 		public static MobileServiceClient mClient;
 
 
-8. In ToDoActivity.java, add the following method to the ToDoActivity class to allow registering for notifications.
+8. Now you need to acquire unique GCM registrationId when the app is started. To implement GCM enabled app, follow the reference of [Implement GCM Client from Google](https://developer.android.com/google/gcm/client.html) first.
 
-        /**
-		 * Registers mobile services client to receive GCM push notifications
-		 * @param gcmRegistrationId The Google Cloud Messaging session Id returned 
-		 * by the call to GoogleCloudMessaging.register in NotificationsManager.handleNotifications
-		 */
-		public void registerForPush(String gcmRegistrationId)
-		{
-			String [] tags = {null};
-			ListenableFuture<Registration> reg = mClient.getPush().register(gcmRegistrationId, tags);
+9. In TodoActivity, modify the registerInBackground method. The registerInBackground method is provided by [Implement GCM Client from Google](https://developer.android.com/google/gcm/client.html) document.
+
+	private void registerInBackground() {
+		new AsyncTask() {
+			@Override
+			protected void onPostExecute(Object o) {
+				super.onPostExecute(o);
+			}
 			
-	    	Futures.addCallback(reg, new FutureCallback<Registration>() {
-	    		@Override
-	    		public void onFailure(Throwable exc) {
-	    			createAndShowDialog((Exception) exc, "Error");
-	    		}
-	    		
-	    		@Override
-	    		public void onSuccess(Registration reg) {
-	    			createAndShowDialog(reg.getRegistrationId() + " resistered", "Registration");
-	    		}
-	    	});
-		}
+			@Override
+			protected Object doInBackground(Object[] objects) {
+				String msg;
+				try {
+					if (gcm == null) {
+						gcm = GoogleCloudMessaging.getInstance(context);
+					}
+					regid = gcm.register(SENDER_ID);
+        		        	msg = "Device registered, registration ID=" + regid;
 
+					// comment out from GCM Client reference.
+					// sendRegistrationIdToBackend();
+			
+					// register GCM registration id to Azure Mobile Service.
+	        	        	ToDoActivity.mClient.getPush().register(regid, new RegistrationCallback() {
+						@Override
+						public void onRegister(Registration registration, Exception exception) {
+							if (exception != null) {
+								// handle error
+							}
+						}});
+                				
+                			// Persist the regID - no need to register again.
+			                storeRegistrationId(context, regid);
+				}
+				catch(Exception e) { 
+					msg = "Error :" + ex.getMessage();
+					// If there is an error, don't just keep trying to register.
+					// Require the user to click a button again, or perform
+					// exponential back-off.    
+				}
+				return msg;
+			}
+			@Override
+			protected void onPostExecute(String msg) {
+            			mDisplay.append(msg + "\n");
+        		}
+		}.execute(null, null, null);
+	}
 
+10. Next we need to add a new class to handle notifications. In the Package Explorer, right-click the package (under the `src` node), click **New**, click **Class**.
 
-9. Next we need to add a new class to handle notifications. In the Package Explorer, right-click the package (under the `src` node), click **New**, click **Class**.
-
-10. In **Name** type `MyHandler`, in **Superclass** type `com.microsoft.windowsazure.notifications.NotificationsHandler`, then click **Finish**
+11. In **Name** type `MyHandler`, in **Superclass** type `com.microsoft.windowsazure.notifications.NotificationsHandler`, then click **Finish**
 
 	![](./media/mobile-services-android-get-started-push/mobile-services-android-create-class.png)
 
 	This creates the new MyHandler class.
 
-11. Add the following import statements for the `MyHandler` class:
+12. Add the following import statements for the `MyHandler` class:
 
 		import android.app.NotificationManager;
 		import android.app.PendingIntent;
@@ -87,35 +111,12 @@
 		import android.support.v4.app.NotificationCompat;
 
 	
-12. Next add the following members for the `MyHandler` class:
+13. Next add the following members for the `MyHandler` class:
 
 		public static final int NOTIFICATION_ID = 1;
 		private NotificationManager mNotificationManager;
 		NotificationCompat.Builder builder;
 		Context ctx;
-
-
-13. In the `MyHandler` class, add the following code to override the **onRegistered** method: which registers your device with the mobile service Notification Hub.
-
-		@Override
-		public void onRegistered(Context context,  final String gcmRegistrationId) {
-		    super.onRegistered(context, gcmRegistrationId);
-	
-		    new AsyncTask<Void, Void, Void>() {
-		    		    	
-		    	protected Void doInBackground(Void... params) {
-		    		try {
-		    		    ToDoActivity.mClient.getPush().register(gcmRegistrationId, null);
-		    		    return null;
-	    		    }
-	    		    catch(Exception e) { 
-			    		// handle error    		    
-	    		    }
-					return null;  		    
-	    		}
-		    }.execute();
-		}
-
 
 
 14. In the `MyHandler` class, add the following code to override the **onReceive** method, which causes the notification to display when it is received.
