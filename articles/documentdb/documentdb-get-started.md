@@ -119,14 +119,14 @@ Your DocumentDB [database](documentdb-resources.md#databases) can be created by 
 	
 	try
 	{
-		await this.client.ReadDatabaseAsync(UriFactory.CreateDatabaseUri(familyName));
+		await this.client.ReadDatabaseAsync(UriFactory.CreateDatabaseUri(databaseName));
 	}
 	catch (DocumentClientException de)
 	{
 		// If the database does not exist, create a new database
 		if (de.StatusCode == HttpStatusCode.NotFound)
 		{
-			await this.client.CreateDatabaseAsync(new Database { Id = familyName });
+			await this.client.CreateDatabaseAsync(new Database { Id = databaseName });
 			this.WriteToConsoleAndPromptToContinue("Created {0}", databaseName);
 		}
 		else
